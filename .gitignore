@@ -1,0 +1,109 @@
+#############################
+# Frontend (Vite + React + TS + pnpm)
+#############################
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Logs
+pnpm-debug.log*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs & Cache
+dist/
+build/
+.cache/
+.parcel-cache/
+
+# dotenv environment variables for frontend (inside 'client' folder)
+client/.env
+client/.env.local
+client/.env.development.local
+client/.env.test.local
+client/.env.production.local
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Test reports
+coverage/
+*.lcov
+.nyc_output
+
+#############################
+# Backend (Python + FastAPI)
+#############################
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment folders
+venv/
+.venv/
+env/
+ENV/
+
+# Build artifacts
+*.egg-info/
+.eggs/
+
+# Database files (e.g., for local SQLite testing)
+*.sqlite3
+*.db
+
+# Log files
+*.log
+logs/
+*.pid
+*.seed
+*.pid.lock
+
+# Test and type checker cache
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+coverage.xml
+
+# Environment variables for backend (inside 'server' folder and root)
+server/.env
+.env
+.env.local
+.env.*
+
+#############################
+# IDE / Editor specific files
+#############################
+.vscode/
+.idea/
+*.swp
+*.swo
+*.iml
+
+#############################
+# OS generated files
+#############################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+#############################
+# Java / Spring Boot
+#############################
+# Ignore real Spring configs
+**/application.properties
+**/application-dev.properties
+**/application-prod.properties
+**/application-local.properties
+
+# Allow example file
+!**/application-example.properties

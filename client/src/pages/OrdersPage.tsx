@@ -12,9 +12,8 @@ import { ConfirmationModal } from "@/components/orders/ConfirmationModal";
 import { OrderTable } from "@/components/orders/OrderTable";
 
 /**
- * This is the main container component for the Orders page.
- * It's responsible for fetching data, managing state, and connecting
- * all child components (like Modals and the Table).
+ * Main container component for the Orders page.
+ * Updated Logic: Implements business rules to prevent editing "Shipped" orders.
  */
 const OrdersPage: React.FC = () => {
   // State for the list of orders
@@ -30,11 +29,11 @@ const OrdersPage: React.FC = () => {
   // States for managing all modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [viewingOrder, setViewingOrder] = useState<Order | null>(null); // Order being viewed in details modal
+  const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null); // Order marked for deletion
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null); // Order being edited
-  const [isDeleting, setIsDeleting] = useState(false); // Loading state for delete confirmation
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Effect to fetch initial data (orders and products) on component mount
   useEffect(() => {
@@ -57,144 +56,145 @@ const OrdersPage: React.FC = () => {
       }
     };
     fetchData();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
-  // Filter orders based on the search term (checks customer name and order ID)
+  // Filter orders based on the search term
   const filteredOrders = orders.filter(
-    (o) =>
-      o.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.id.toString().includes(searchTerm)
+      (o) =>
+          o.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          o.id.toString().includes(searchTerm)
   );
 
   // --- Handlers for Child Components ---
 
-  // Adds a new order to the top of the list when created
   const handleOrderAdded = (newOrder: Order) =>
-    setOrders([newOrder, ...orders]);
+      setOrders([newOrder, ...orders]);
 
-  // Updates an existing order in the list
   const handleOrderUpdated = (updatedOrder: Order) =>
-    setOrders(orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+      setOrders(orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
 
-  // Opens the view details modal
   const handleViewClick = (order: Order) => {
     setViewingOrder(order);
   };
 
-  // Opens the edit modal
+  /**
+   * UPDATED HANDLER: Access Guard
+   * Ensures that orders in final stages (Shipped/Delivered) cannot be edited.
+   */
   const handleEditClick = (order: Order) => {
+    const currentStatus = order.status.toLowerCase();
+
+    // Check if the order is already shipped or delivered
+    if (currentStatus === "shipped" || currentStatus === "delivered" || currentStatus === "returned") {
+      alert(`Access Denied: Order #${order.id} is marked as "${order.status}" and cannot be modified.`);
+      return; // Exit function to prevent modal from opening
+    }
+
     setEditingOrder(order);
     setIsEditModalOpen(true);
   };
 
-  // Opens the delete confirmation modal
   const handleDeleteClick = (order: Order) => {
     setOrderToDelete(order);
     setIsConfirmModalOpen(true);
   };
 
-  // Handles the actual delete after confirmation
   const handleConfirmDelete = async () => {
     if (!orderToDelete) return;
     setIsDeleting(true);
     try {
       await deleteOrder(orderToDelete.id);
-      // Remove the deleted order from the local state
       setOrders(orders.filter((o) => o.id !== orderToDelete.id));
       setIsConfirmModalOpen(false);
       setOrderToDelete(null);
     } catch (error) {
       console.error("Failed to delete order:", error);
-      // You could set an error state here
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // This function adds a new product (created via the QuickAdd modal) to the main products list
   const handleProductAdded = (newProduct: Product) => {
     setProducts((prevProducts) => [newProduct, ...prevProducts]);
   };
 
   return (
-    <>
-      {/* --- Modals Section --- */}
-      {/* Add Order Modal: Passes down the product list and handlers */}
-      <AddOrderModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onOrderAdded={handleOrderAdded}
-        products={products}
-        onProductAdded={handleProductAdded} // Pass down the product add handler
-      />
-      {/* Edit Order Modal */}
-      <EditOrderModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        order={editingOrder}
-        onOrderUpdated={handleOrderUpdated}
-      />
-      {/* View Order Details Modal */}
-      <OrderDetailsModal
-        isOpen={!!viewingOrder} // Open if viewingOrder is not null
-        onClose={() => setViewingOrder(null)}
-        order={viewingOrder}
-      />
-      {/* Delete Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={isConfirmModalOpen}
-        onClose={() => setIsConfirmModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        title="Confirm Deletion"
-        message={`Are you sure you want to delete Order #${orderToDelete?.id}? This action cannot be undone.`}
-        loading={isDeleting}
-      />
-
-      {/* --- Main Page Content --- */}
-      <div className="bg-zinc-900 rounded-lg shadow-lg p-6">
-        {/* Page Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Order Management</h1>
-            <p className="text-sm text-zinc-400">
-              Track and manage all customer orders as per the blueprint.
-            </p>
-          </div>
-          {/* Add New Order Button */}
-          <button
-            onClick={() => setIsAddModalOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg"
-          >
-            <PlusCircle size={18} />
-            <span>Add New Order</span>
-          </button>
-        </div>
-
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="Search by Order ID or Customer..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-            />
-          </div>
-        </div>
-
-        {/* Order Table: Displays the filtered orders */}
-        <OrderTable
-          loading={loading}
-          error={error}
-          orders={filteredOrders}
-          onView={handleViewClick}
-          onEdit={handleEditClick}
-          onDelete={handleDeleteClick}
+      <>
+        {/* --- Modals Section --- */}
+        <AddOrderModal
+            isOpen={isAddModalOpen}
+            onClose={() => setIsAddModalOpen(false)}
+            onOrderAdded={handleOrderAdded}
+            products={products}
+            onProductAdded={handleProductAdded}
         />
-      </div>
-    </>
+
+        <EditOrderModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            order={editingOrder}
+            onOrderUpdated={handleOrderUpdated}
+        />
+
+        <OrderDetailsModal
+            isOpen={!!viewingOrder}
+            onClose={() => setViewingOrder(null)}
+            order={viewingOrder}
+        />
+
+        <ConfirmationModal
+            isOpen={isConfirmModalOpen}
+            onClose={() => setIsConfirmModalOpen(false)}
+            onConfirm={handleConfirmDelete}
+            title="Confirm Deletion"
+            message={`Are you sure you want to delete Order #${orderToDelete?.id}? This action cannot be undone.`}
+            loading={isDeleting}
+        />
+
+        {/* --- Main Page Content --- */}
+        <div className="bg-zinc-900 rounded-lg shadow-lg p-6">
+          {/* Page Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Order Management</h1>
+              <p className="text-sm text-zinc-400">
+                Track and manage customer orders. Shipped orders are locked for editing.
+              </p>
+            </div>
+            <button
+                onClick={() => setIsAddModalOpen(true)}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              <PlusCircle size={18} />
+              <span>Add New Order</span>
+            </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+              <input
+                  type="text"
+                  placeholder="Search by Order ID or Customer..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-10 pr-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              />
+            </div>
+          </div>
+
+          {/* Order Table */}
+          <OrderTable
+              loading={loading}
+              error={error}
+              orders={filteredOrders}
+              onView={handleViewClick}
+              onEdit={handleEditClick}
+              onDelete={handleDeleteClick}
+          />
+        </div>
+      </>
   );
 };
 

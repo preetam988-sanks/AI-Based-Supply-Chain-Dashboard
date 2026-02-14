@@ -143,12 +143,7 @@ export const getSettings = () => apiClient.get<AppSetting[]>("/settings/");
 export const updateSettings = (settingsData: AppSettingsUpdate) =>
   apiClient.put<AppSetting[]>("/settings/", settingsData);
 
-// --- CSV UPLOAD FUNCTIONS ---
 
-/**
- * Uploads an inventory CSV file.
- * Expects 'multipart/form-data'.
- */
 export const uploadInventoryCSV = (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -157,16 +152,13 @@ export const uploadInventoryCSV = (file: File) => {
     products_added: number;
     products_updated: number;
     errors: string[];
-    error_report_id?: string; // ID to download an error report if any
+    error_report_id?: string;
   }>("/bulk/inventory/upload-csv", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
 
-/**
- * Uploads an orders CSV file.
- * Expects 'multipart/form-data'.
- */
+
 export const uploadOrdersCSV = (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -174,28 +166,25 @@ export const uploadOrdersCSV = (file: File) => {
     message: string;
     orders_created: number;
     errors: string[];
-    error_report_id?: string; // ID to download an error report if any
+    error_report_id?: string;
   }>("/bulk/orders/upload-csv", formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 };
 
-// --- CSV EXPORT FUNCTIONS ---
-// These endpoints return a file Blob.
+
 export const exportInventoryCSV = () =>
   apiClient.get("/bulk/inventory/export-csv", { responseType: "blob" });
 export const exportOrdersCSV = () =>
   apiClient.get("/bulk/orders/export-csv", { responseType: "blob" });
 
-// --- CSV TEMPLATE DOWNLOAD FUNCTIONS ---
-// These endpoints return a file Blob.
+
 export const downloadInventoryTemplate = () =>
   apiClient.get("/bulk/inventory/template", { responseType: "blob" });
 export const downloadOrderTemplate = () =>
   apiClient.get("/bulk/orders/template", { responseType: "blob" });
 
-// --- ERROR FILE DOWNLOAD FUNCTIONS ---
-// These endpoints return a file Blob using a specific report ID.
+
 export const downloadInventoryErrorFile = (reportId: string) =>
   apiClient.get(`/bulk/inventory/download-errors/${reportId}`, {
     responseType: "blob",

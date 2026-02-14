@@ -1,12 +1,10 @@
 import React, { useEffect, useState, type FormEvent } from "react";
-// Import API functions for user CRUD operations
 import {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
 } from "@/services/api.ts";
-// Import icons from lucide-react
 import {
   PlusCircle,
   Search,
@@ -15,21 +13,18 @@ import {
   Trash2,
   AlertTriangle, // Icon for confirmation modal
 } from "lucide-react";
-// Import utility for combining class names
 import { cn } from "@/lib/utils";
-// Import TypeScript types
+
 import type { User, UserCreate, UserUpdate, UserRole } from "@/types";
 
-// --- Add User Modal Component ---
+
 interface AddUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUserAdded: (newUser: User) => void;
 }
 
-/**
- * A modal component for creating a new user.
- */
+
 const AddUserModal: React.FC<AddUserModalProps> = ({
   isOpen,
   onClose,

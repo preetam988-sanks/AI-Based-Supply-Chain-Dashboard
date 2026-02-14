@@ -16,44 +16,96 @@ import ProtectedRoute from "@/components/ProtectedRoutes/ProtectedRoute";
 import DashboardLayout from "@/layouts/DashboardLayout";
 import PredictionPage from "@/pages/PredictionPage.tsx";
 
-const router = createBrowserRouter([
-  // Public Route
-  { path: "/login", element: <LoginPage /> },
+// const router = createBrowserRouter([
+//
+//   {
+//     path: "/",
+//     element: <Navigate to="/login" replace />
+//   },
+//
+//
+//   {
+//     path: "/login",
+//     element: <LoginPage />
+//   },
+//
+//
+//   {
+//     element: <ProtectedRoute />,
+//     children: [
+//       {
+//         element: <DashboardLayout />,
+//         children: [
+//           { index: true, element: <Navigate to="/dashboard" replace /> },
+//           { path: "dashboard", element: <DashboardPage /> },
+//           { path: "inventory", element: <InventoryPage /> },
+//           { path: "logistics", element: <LogisticsPage /> },
+//           { path: "import", element: <ImportPage /> },
+//           { path: "orders", element: <OrdersPage /> },
+//
+//
+//           {
+//             element: <ProtectedRoute allowedRoles={["admin"]} />,
+//             children: [
+//               { path: "analytics", element: <AnalyticsPage /> },
+//               { path: "forecast", element: <ForecastPage /> },
+//               { path: "users", element: <UsersPage /> },
+//               { path: "prediction", element: <PredictionPage /> },
+//             ],
+//           },
+//         ],
+//       },
+//     ],
+//   },
+// ]);
+import SignupPage from "@/pages/SignUpPage";
+import ForgotPasswordPage from "@/pages/ResetPassword.tsx";
 
-  // Secure Routes
+const router = createBrowserRouter([
+  // PUBLIC ROUTES
   {
-    element: <ProtectedRoute />, // Validates that a token exists
+    path: "/login",
+    element: <LoginPage />,
+  },
+  {
+    path: "/signup",
+    element: <SignupPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
+  },
+
+  // PROTECTED ROUTES
+  {
+    element: <ProtectedRoute />,
     children: [
       {
-        element: <DashboardLayout />, // Provides the Sidebar and Header once
+        element: <DashboardLayout />,
         children: [
-          // Standard User & Admin Routes
           { path: "/", element: <Navigate to="/dashboard" replace /> },
           { path: "/dashboard", element: <DashboardPage /> },
           { path: "/inventory", element: <InventoryPage /> },
           { path: "/logistics", element: <LogisticsPage /> },
           { path: "/import", element: <ImportPage /> },
           { path: "/orders", element: <OrdersPage /> },
-
-          // Strict Admin-Only Routes
-          {
-            element: <ProtectedRoute allowedRoles={["admin"]} />,
-            children: [
-              { path: "/analytics", element: <AnalyticsPage /> },
-              { path: "/forecast", element: <ForecastPage /> },
-              { path: "/users", element: <UsersPage /> },
-              {path:"/prediction",element:<PredictionPage /> },
-
-            ],
-          },
+          { path: "/analytics", element: <AnalyticsPage /> },
+          { path: "/forecast", element: <ForecastPage /> },
+          { path: "/users", element: <UsersPage /> },
+          { path: "/prediction", element: <PredictionPage /> },
         ],
       },
     ],
   },
+
+  // FALLBACK
+  {
+    path: "*",
+    element: <Navigate to="/login" replace />,
+  },
 ]);
-
 ReactDOM.createRoot(document.getElementById("root")!).render(
-
+    <React.StrictMode>
       <RouterProvider router={router} />
-
+    </React.StrictMode>
 );

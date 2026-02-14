@@ -1,28 +1,36 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-# Import database session, schemas, models, and security utilities
 from ..database import get_db
 from ..schemas import schemas
 from ..models import models
 from .. import security
+from ..config import conf
+
+from fastapi_mail import FastMail, MessageSchema
+import random
+import time
 
 router = APIRouter()
 
+# Store OTP with expiry time (email: (otp, expiry))
+otp_store = {}
+
+# =========================
+# GET ALL USERS
+# =========================
 @router.get("/", response_model=List[schemas.User])
 def get_all_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    """
-    Fetches a list of all users with pagination.
-    """
     users = db.query(models.User).offset(skip).limit(limit).all()
     return users
 
+
+# =========================
+# CREATE USER (SIGNUP)
+# =========================
 @router.post("/", response_model=schemas.User, status_code=status.HTTP_201_CREATED)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """
-    Creates a new user in the database.
-    """
-    # Check if a user with this email already exists
+
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(
@@ -30,74 +38,158 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
             detail="Email already registered"
         )
 
-    # Hash the password before saving
     hashed_password = security.get_password_hash(user.password)
-    # Exclude the plain-text password from the data to be saved
     user_data = user.model_dump(exclude={"password"})
 
-    # Create a new User model instance
     db_user = models.User(**user_data, hashed_password=hashed_password)
 
-    # Add, commit, and refresh to get the new user object from the DB
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
     return db_user
 
+
+# =========================
+# UPDATE USER
+# =========================
 @router.put("/{user_id}", response_model=schemas.User)
 def update_user(user_id: int, user_update: schemas.UserUpdate, db: Session = Depends(get_db)):
-    """
-    Updates an existing user's details by their ID.
-    """
-    # Find the user in the database
+
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
 
-    # If user not found, raise a 404 error
     if db_user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Get the update data, excluding fields that weren't set
     update_data = user_update.model_dump(exclude_unset=True)
-    # Loop through the provided data and update the user object
+
     for key, value in update_data.items():
         setattr(db_user, key, value)
 
-    # Commit the changes to the database
-    db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
     return db_user
 
+
+# =========================
+# DELETE USER
+# =========================
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
-    """
-    Deletes a user from the database by their ID.
-    """
-    # Find the user in the database
+
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
 
-    # If user not found, raise a 404 error
     if db_user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete the user and commit the change
     db.delete(db_user)
     db.commit()
-    # Return None with a 204 status code (No Content)
+
     return None
 
+
+# =========================
+# LOGIN
+# =========================
 @router.post("/login")
 def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
+
     user = db.query(models.User).filter(models.User.email == form_data.email).first()
+
     if not user or not security.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Generate token with the role for Spring Boot to read
     access_token = security.create_access_token(
         data={"sub": user.email, "role": user.role}
     )
+
     return {
-    "access_token": access_token,
-    "token_type": "bearer",
-    "userrole": user.role # This matches your React LoginPage check
-}
+        "access_token": access_token,
+        "token_type": "bearer",
+        "userrole": user.role
+    }
+
+
+@router.post("/forgot-password")
+async def forgot_password(email: str, db: Session = Depends(get_db)):
+
+    user = db.query(models.User).filter(models.User.email == email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+
+    current_time = time.time()
+
+    # Check if resend cooldown exists
+    existing_entry = otp_store.get(email)
+
+    if existing_entry:
+        resend_allowed_at = existing_entry["resend_allowed_at"]
+        if current_time < resend_allowed_at:
+            remaining = int(resend_allowed_at - current_time)
+            raise HTTPException(
+                status_code=429,
+                detail=f"Please wait {remaining} seconds before requesting OTP again"
+            )
+
+    # Generate new OTP
+    otp = str(random.randint(100000, 999999))
+
+    otp_store[email] = {
+        "otp": otp,
+        "expiry": current_time + 300,  # 5 minutes
+        "attempts": 0,
+        "resend_allowed_at": current_time + 60  # 60 sec cooldown
+    }
+
+    message = MessageSchema(
+        subject="Your Password Reset OTP",
+        recipients=[email],
+        body=f"Your OTP is: {otp}. It expires in 5 minutes.",
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)
+
+    return {"message": "OTP sent successfully"}
+@router.post("/reset-password")
+def reset_password(data: schemas.ResetPassword, db: Session = Depends(get_db)):
+
+    entry = otp_store.get(data.email)
+
+    if not entry:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+
+    current_time = time.time()
+
+    # Check expiry
+    if current_time > entry["expiry"]:
+        del otp_store[data.email]
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    # Check max attempts
+    if entry["attempts"] >= 3:
+        del otp_store[data.email]
+        raise HTTPException(status_code=403, detail="Maximum OTP attempts exceeded")
+
+    # Validate OTP
+    if entry["otp"] != data.otp:
+        entry["attempts"] += 1
+        remaining = 3 - entry["attempts"]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid OTP. {remaining} attempts remaining"
+        )
+
+    # OTP correct → reset password
+    user = db.query(models.User).filter(models.User.email == data.email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.hashed_password = security.get_password_hash(data.new_password)
+    db.commit()
+
+    del otp_store[data.email]
+
+    return {"message": "Password reset successful"}

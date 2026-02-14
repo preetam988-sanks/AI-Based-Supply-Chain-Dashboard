@@ -217,6 +217,14 @@ const publicClient = axios.create({
     "Content-Type": "application/json",
   },
 });
+export const registerUser = (data: any) =>
+    publicClient.post("/users/", data);
+
+export const forgotPassword = (email: string) =>
+    publicClient.post(`/users/forgot-password?email=${email}`);
+
+export const resetPassword = (data: any) =>
+    publicClient.post("/users/reset-password", data);
 
 export const loginUser = (credentials: any) =>
     publicClient.post("/users/login", credentials);

@@ -15,9 +15,7 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Plain password ko hashed password se compare karta hai."""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Plain password ka hash banata hai."""
     return pwd_context.hash(password)

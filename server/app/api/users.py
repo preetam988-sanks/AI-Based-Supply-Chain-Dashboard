@@ -72,9 +72,7 @@ def update_user(user_id: int, user_update: schemas.UserUpdate, db: Session = Dep
     return db_user
 
 
-# =========================
-# DELETE USER
-# =========================
+
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db)):
 

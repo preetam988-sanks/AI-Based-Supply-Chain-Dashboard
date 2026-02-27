@@ -49,8 +49,12 @@ public class ProxyController {
     private final WebClient fastApiClient;
 
     public ProxyController(WebClient.Builder builder) {
-        // This client is dedicated to the Port 8000 pass-through
-        this.fastApiClient = builder.baseUrl("http://localhost:8000").build();
+//        this.fastApiClient = builder.baseUrl("http://localhost:8000").build();
+        String mainApiUrl=System.getenv("MAIN_API_URL");
+        if(mainApiUrl==null||mainApiUrl.isEmpty()){
+            mainApiUrl="http://localhost:8080";
+        }
+        this.fastApiClient=builder.baseUrl(mainApiUrl).build();
     }
 
     @RequestMapping("/api/server/**")
@@ -59,7 +63,6 @@ public class ProxyController {
 //        String path = request.getRequestURI();
         String query = request.getQueryString() != null ? "?" + request.getQueryString() : "";
 
-        // Forward ONLY necessary headers to avoid proxy conflicts
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", request.getHeader("Authorization"));
         headers.add("Content-Type", request.getHeader("Content-Type"));

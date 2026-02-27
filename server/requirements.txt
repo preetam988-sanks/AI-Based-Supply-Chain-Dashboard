@@ -8,7 +8,6 @@ passlib[bcrypt]
 groq
 httpx
 pandas
-prophet
 numpy
 aiosmtplib==5.1.0
 annotated-types==0.7.0

@@ -19,13 +19,15 @@ app = FastAPI(title="Supply Chain AI Dashboard API")
 # This allows the React frontend (e.g., from localhost:5173) to make requests to this backend.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",
-                   "http://localhost:5174",  # Naya Customer Storefront
-                   "http://127.0.0.1:5173",
-                   "http://127.0.0.1:5174"], # The address of the frontend app
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "https://proxyservice-1hx2.onrender.com",
+        "https://supply-chain-ai-dashboard-1.onrender.com"
+    ],
     allow_credentials=True,
-    allow_methods=["*"], # Allow all HTTP methods
-    allow_headers=["*"], # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # === API Routers ===

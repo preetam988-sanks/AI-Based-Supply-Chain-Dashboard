@@ -23,7 +23,8 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:5174",
         "https://proxyservice-1hx2.onrender.com",
-        "https://supply-chain-ai-dashboard-1.onrender.com"
+        "https://supply-chain-ai-dashboard-1.onrender.com",
+        "https://ai-based-supply-chain-dashboard-ui.onrender.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],

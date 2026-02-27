@@ -19,7 +19,7 @@ import type {
 } from "@/types";
 
 // --- STEP 1: Change the URL to point to Spring Boot Gateway ---
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:9090/api/server";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:9090/api/server";
 
 const apiClient = axios.create({
   baseURL: API_URL,

@@ -23,7 +23,7 @@ const PredictionPage: React.FC = () => {
     const [historyLoading, setHistoryLoading] = useState(false);
     const [activeId, setActiveId] = useState<number | null>(null);
 
-    const API_BASE_URL = "http://localhost:9090/api/predictions";
+    const API_BASE_URL = import.meta.env.VITE_MAIN_CHAT_URL || "http://localhost:9090/api/predictions";
 
     useEffect(() => {
         fetchHistory();

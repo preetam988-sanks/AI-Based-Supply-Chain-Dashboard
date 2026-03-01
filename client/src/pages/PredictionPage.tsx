@@ -32,7 +32,7 @@ const PredictionPage: React.FC = () => {
     const fetchHistory = async () => {
         setHistoryLoading(true);
         try {
-            const response = await fetch(API_BASE_URL);
+            const response = await fetch(`${API_BASE_URL}/history`);
             if (response.ok) {
                 const data = await response.json();
                 setHistory(Array.isArray(data) ? [...data].reverse() : []);

@@ -43,31 +43,30 @@ public class SecurityConfig {
 
                 .csrf(AbstractHttpConfigurer::disable)
 
-//                .authorizeHttpRequests(auth -> auth
-//                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-//
-//                        .requestMatchers("/api/server/users/login").permitAll()
-//                        .requestMatchers("/error").permitAll()
-//                                .requestMatchers("/api/predictions/**").permitAll()
-////                                .requestMatchers("/api/server/**").permitAll()
-//
-////                        .requestMatchers("/api/predictions/**").hasAuthority("admin")
-////                        .requestMatchers("/api/server/users/**").hasAuthority("admin")
-////                        .requestMatchers("/api/server/analytics/**").hasAnyAuthority("admin","user")
-////
-////
-////                        .requestMatchers("/api/server/dashboard/**").hasAnyAuthority("admin", "user")
-////                        .requestMatchers("/api/server/orders/**").hasAnyAuthority("admin", "user")
-////                        .requestMatchers("/api/server/inventory/**").hasAnyAuthority("admin", "user")
-////                        .requestMatchers("/api/server/logistics/**").hasAnyAuthority("admin", "user")
-////                        .requestMatchers("/api/server/import/**").hasAnyAuthority("admin", "user")
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
+
+                        .requestMatchers("/api/server/users/login").permitAll()
+                        .requestMatchers("/error").permitAll()
+                                .requestMatchers("/api/predictions/**").permitAll()
+//                                .requestMatchers("/api/server/**").permitAll()
+
+//                        .requestMatchers("/api/predictions/**").hasAuthority("admin")
+//                        .requestMatchers("/api/server/users/**").hasAuthority("admin")
+//                        .requestMatchers("/api/server/analytics/**").hasAnyAuthority("admin","user")
 //
 //
-//                        .anyRequest().authenticated()
-//                )
-//
-//                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(auth->auth.anyRequest().permitAll())
+//                        .requestMatchers("/api/server/dashboard/**").hasAnyAuthority("admin", "user")
+//                        .requestMatchers("/api/server/orders/**").hasAnyAuthority("admin", "user")
+//                        .requestMatchers("/api/server/inventory/**").hasAnyAuthority("admin", "user")
+//                        .requestMatchers("/api/server/logistics/**").hasAnyAuthority("admin", "user")
+//                        .requestMatchers("/api/server/import/**").hasAnyAuthority("admin", "user")
+
+
+                        .anyRequest().authenticated()
+                )
+
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

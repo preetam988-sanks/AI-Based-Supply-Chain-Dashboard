@@ -18,7 +18,6 @@ import type {
   DemandForecast,
 } from "@/types";
 
-// --- STEP 1: Change the URL to point to Spring Boot Gateway ---
 const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:9090/api/server";
 
 const apiClient = axios.create({
@@ -32,19 +31,16 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
-    // MUST use backticks (`) - look at your keyboard's top-left key
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Type definition for daily revenue data points
 export interface RevenueDataPoint {
-  date: string; // 'YYYY-MM-DD'
+  date: string;
   revenue: number;
 }
 
-// Type definition for monthly revenue data points
 export interface MonthlyRevenueDataPoint {
   month: string; // e.g., "Jan", "Feb"
   revenue: number;

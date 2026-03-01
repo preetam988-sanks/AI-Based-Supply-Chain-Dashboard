@@ -87,9 +87,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     return None
 
 
-# =========================
-# LOGIN
-# =========================
+
 @router.post("/login")
 def login(form_data: schemas.UserLogin, db: Session = Depends(get_db)):
 

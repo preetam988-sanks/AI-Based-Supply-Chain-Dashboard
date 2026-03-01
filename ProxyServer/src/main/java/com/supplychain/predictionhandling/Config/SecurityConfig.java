@@ -31,7 +31,10 @@ public class SecurityConfig {
 
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:5173",("https://ai-based-supply-chain-dashboard-ui.onrender.com")));
+                    config.setAllowedOrigins(List.of("http://localhost:5173",
+                                    "https://supply-chain-main-chat.onrender.com",
+                                    "https://ai-based-supply-chain-dashboard-ui.onrender.com"
+                            ));
                     config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(Arrays.asList("*"));
                     config.setAllowCredentials(true);
@@ -46,7 +49,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/server/users/login").permitAll()
                         .requestMatchers("/error").permitAll()
                                 .requestMatchers("/api/predictions/**").permitAll()
-                                .requestMatchers("/api/server/**").permitAll()
+//                                .requestMatchers("/api/server/**").permitAll()
 
 //                        .requestMatchers("/api/predictions/**").hasAuthority("admin")
 //                        .requestMatchers("/api/server/users/**").hasAuthority("admin")

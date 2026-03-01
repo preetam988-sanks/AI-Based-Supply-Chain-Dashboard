@@ -52,7 +52,7 @@ public class ProxyController {
 //        this.fastApiClient = builder.baseUrl("http://localhost:8000").build();
         String mainApiUrl=System.getenv("MAIN_API_URL");
         if(mainApiUrl==null||mainApiUrl.isEmpty()){
-            mainApiUrl="http://localhost:8080";
+            mainApiUrl="http://localhost:8000";
         }
         this.fastApiClient=builder.baseUrl(mainApiUrl).build();
     }

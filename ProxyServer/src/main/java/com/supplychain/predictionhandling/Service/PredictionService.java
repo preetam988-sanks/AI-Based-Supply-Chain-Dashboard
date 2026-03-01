@@ -18,7 +18,11 @@ public class PredictionService {
     private final WebClient webClient;
     private final PredictionRepository repository;
     public PredictionService(WebClient.Builder webClientBuilder, PredictionRepository repository) {
-        this.webClient = webClientBuilder.baseUrl("http://localhost:8001").build();
+        String baseURL=System.getenv("MAIN_CHAT_URL");
+        if(baseURL==null){
+            baseURL="http://localhost:8001";
+        }
+        this.webClient = webClientBuilder.baseUrl(baseURL).build();
         this.repository=repository;
     }
     public Mono<String> getPredictionFromPython(MultipartFile file,String questions) {

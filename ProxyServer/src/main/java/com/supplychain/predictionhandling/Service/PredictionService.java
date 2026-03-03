@@ -9,6 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.LocalDateTime;
 
@@ -36,14 +37,16 @@ public class PredictionService {
                 .body(BodyInserters.fromMultipartData(builder.build()))
                 .retrieve()
                 .bodyToMono(String.class)
+                .publishOn(Schedulers.boundedElastic())
                 .flatMap(responseBody->{
                     PredictionRecord record=PredictionRecord.builder()
                             .questions(questions)
                             .result(responseBody)
                             .createdAt(LocalDateTime.now())
                             .build();
-                    repository.save(record);
-                    return Mono.just(responseBody);
+                    return Mono.fromCallable(()->repository.save(record))
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .thenReturn(responseBody);
                 });
     }
 

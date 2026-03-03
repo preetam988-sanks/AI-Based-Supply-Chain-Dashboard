@@ -30,5 +30,4 @@ public class PredictionController {
     public ResponseEntity<List<PredictionRecord>> getHistory(){
        return ResponseEntity.ok(Repository.findAll());
    }
-
 }

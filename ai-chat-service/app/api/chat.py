@@ -26,7 +26,6 @@ async def chat(
     elif intent == "FORECAST":
         answer = next_month_prediction(df)
     elif intent == "PROFIT_ANALYSIS":
-        # This will now work because of the import above
         answer = analyze_profitability(df)
     else:
         answer = "Sorry, I couldn't understand the question."

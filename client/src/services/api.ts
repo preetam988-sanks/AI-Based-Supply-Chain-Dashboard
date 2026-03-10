@@ -98,7 +98,7 @@ export const getMonthlyRevenue = (months: number = 6) =>
   apiClient.get<{ data: MonthlyRevenueDataPoint[] }>(
     "/analytics/monthly-revenue",
     {
-      params: { months }, // Pass 'months' as a query parameter
+      params: { months },
     }
   );
 

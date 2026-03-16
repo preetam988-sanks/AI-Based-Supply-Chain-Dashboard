@@ -4,3 +4,6 @@ pandas
 python-multipart
 prophet
 plotly
+tensorflow
+scikit-learn
+numpy

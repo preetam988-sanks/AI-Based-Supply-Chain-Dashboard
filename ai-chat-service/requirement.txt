@@ -4,6 +4,6 @@ pandas
 python-multipart
 prophet
 plotly
-tensorflow
+tensorflow==2.16.1
 scikit-learn
-numpy
+numpy<2.0.0

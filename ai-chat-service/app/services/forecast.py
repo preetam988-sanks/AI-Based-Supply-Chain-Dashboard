@@ -6,80 +6,53 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
 from sklearn.preprocessing import MinMaxScaler
 
-# --- HELPER: LSTM RESIDUAL ENGINE ---
-
 def train_lstm_on_residuals(residuals, lookback=7):
-    """
-    Trains an LSTM to learn from the 'errors' Prophet made.
-    """
     scaler = MinMaxScaler(feature_range=(0, 1))
-    # Reshape residuals to (-1, 1) for the scaler
     scaled_res = scaler.fit_transform(residuals.reshape(-1, 1))
-
     X, y = [], []
     for i in range(lookback, len(scaled_res)):
         X.append(scaled_res[i-lookback:i, 0])
         y.append(scaled_res[i, 0])
-
     X, y = np.array(X), np.array(y)
-    # Reshape for LSTM: [samples, time steps, features]
     X = np.reshape(X, (X.shape[0], X.shape[1], 1))
-
-    # Neural Network Architecture
     model = Sequential([
-        LSTM(50, activation='relu', input_shape=(lookback, 1), return_sequences=True),
-        Dropout(0.2),
-        LSTM(50, activation='relu'),
+        LSTM(32, activation='relu', input_shape=(lookback, 1), return_sequences=True),
+        Dropout(0.1),
+        LSTM(32, activation='relu'),
         Dense(1)
     ])
     model.compile(optimizer='adam', loss='mse')
-    # Train silently (verbose=0) to not bloat FastAPI logs
-    model.fit(X, y, epochs=20, batch_size=8, verbose=0)
-
+    model.fit(X, y, epochs=5, batch_size=16, verbose=0)
     return model, scaler
 
 def predict_future_residuals(model, scaler, last_residuals, steps=30, lookback=7):
-    """
-    Uses the trained LSTM to predict the next 30 days of 'corrections'.
-    """
     current_batch = scaler.transform(last_residuals[-lookback:].reshape(-1, 1))
     current_batch = current_batch.reshape((1, lookback, 1))
-
     corrections = []
     for _ in range(steps):
         next_pred = model.predict(current_batch, verbose=0)[0]
         corrections.append(next_pred)
-        # Update rolling window
-        next_pred_reshaped = next_pred.reshape(1, 1, 1)
-        current_batch = np.append(current_batch[:, 1:, :], next_pred_reshaped, axis=1)
-
+        current_batch = np.append(current_batch[:, 1:, :], [[next_pred]], axis=1)
     return scaler.inverse_transform(np.array(corrections).reshape(-1, 1)).flatten()
-
-
-# --- EXISTING FUNCTIONS ---
 
 def historical_summary(df: pd.DataFrame):
     if "revenue" in df.columns:
         total_revenue = df["revenue"].sum()
         total_orders = len(df)
         return {"total_revenue": float(total_revenue), "total_orders": total_orders}
-
     if "Metric" in df.columns:
         rev_row = df[df['Metric'] == 'Revenue']['Value'].values
         revenue = rev_row[0] if len(rev_row) > 0 else "0"
         return {"summary_revenue": revenue}
-
     return {"message": "Could not calculate totals from this file format."}
 
 def best_selling_product(df: pd.DataFrame):
     if "Product Name" in df.columns:
         top_product = df["Product Name"].iloc[0]
         return f"Your top product is {top_product}"
-
     if "product" in df.columns and "quantity" in df.columns:
         product = df.groupby("product")["quantity"].sum().idxmax()
         return product
-
     return "Could not find product data. Please check your CSV column headers."
 
 def analyze_profitability(df: pd.DataFrame):
@@ -95,64 +68,47 @@ def analyze_profitability(df: pd.DataFrame):
         }
     return "I need cost data to calculate profit."
 
-
-# --- UPDATED AI FORECAST (Prophet + LSTM Hybrid) ---
-
 def next_month_prediction(df: pd.DataFrame):
     try:
         df['date'] = pd.to_datetime(df['date'])
         daily_sales = df.groupby('date')['revenue'].sum().reset_index()
         lookback = 7
-
-        # 1. PHASE ONE: PROPHET (Macro Trend)
-        m_total = Prophet(yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False)
+        m_total = Prophet(yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False, uncertainty_samples=0)
         m_total.fit(daily_sales.rename(columns={'date': 'ds', 'revenue': 'y'}))
-
-        # Get historical residuals for LSTM training
         hist_forecast = m_total.predict(daily_sales.rename(columns={'date': 'ds'}))
         residuals = daily_sales['revenue'].values - hist_forecast['yhat'].values
-
-        # 2. PHASE TWO: LSTM (Micro Corrections)
         if len(residuals) > lookback + 5:
             lstm_model, scaler = train_lstm_on_residuals(residuals, lookback)
             corrections = predict_future_residuals(lstm_model, scaler, residuals, steps=30, lookback=lookback)
         else:
-            corrections = np.zeros(30) # Not enough data for LSTM
-
-        # 3. COMBINE: Prophet Future + LSTM Corrections
+            corrections = np.zeros(30)
         future_total = m_total.make_future_dataframe(periods=30)
         forecast_total = m_total.predict(future_total)
-
-        # Grab the last 30 days (the future)
         prophet_30d = forecast_total.iloc[-30:]['yhat'].values
         hybrid_30d = prophet_30d + corrections
         total_predicted = hybrid_30d.sum()
-
-        # --- PRODUCT SPECIFIC LOGIC (Prophet Only for speed per product) ---
         product_results = []
-        for prod in df['product'].unique():
+        unique_products = df['product'].unique()
+        for prod in unique_products:
             prod_df = df[df['product'] == prod].groupby('date')['quantity'].sum().reset_index()
-            if len(prod_df) > 5:
-                m_prod = Prophet(yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False)
+            if len(prod_df) > 10:
+                m_prod = Prophet(yearly_seasonality=False, weekly_seasonality=True, daily_seasonality=False, uncertainty_samples=0)
                 m_prod.fit(prod_df.rename(columns={'date': 'ds', 'quantity': 'y'}))
                 f_prod = m_prod.make_future_dataframe(periods=30)
                 p_prod = m_prod.predict(f_prod)
                 pred_qty = p_prod.iloc[-30:]['yhat'].sum()
             else:
                 pred_qty = prod_df['quantity'].mean() * 30
-
             avg_price = (df[df['product'] == prod]['revenue'] / df[df['product'] == prod]['quantity']).mean()
             product_results.append({
                 "product": prod,
                 "predicted_qty": round(float(pred_qty), 0),
                 "expected_revenue": round(float(pred_qty * avg_price), 2)
             })
-
         top_buy = sorted(product_results, key=lambda x: x['predicted_qty'], reverse=True)[:10]
         dead_stock = sorted(product_results, key=lambda x: x['predicted_qty'])[:10]
-
         return {
-            "forecast_30d_total": f"₹{max(0, total_predicted):,.2f}", # max(0) prevents negative revenue
+            "forecast_30d_total": f"₹{max(0, total_predicted):,.2f}",
             "methodology": "Hybrid Deep Learning (Prophet + LSTM)",
             "top_buy_list": top_buy,
             "least_priority_list": dead_stock,
@@ -163,7 +119,7 @@ def next_month_prediction(df: pd.DataFrame):
 
 def yearly_forecast_logic(df: pd.DataFrame):
     daily_sales = df.groupby('date')['revenue'].sum().reset_index()
-    model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+    model = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False, uncertainty_samples=0)
     model.fit(daily_sales.rename(columns={'date': 'ds', 'revenue': 'y'}))
     future = model.make_future_dataframe(periods=365)
     forecast = model.predict(future)

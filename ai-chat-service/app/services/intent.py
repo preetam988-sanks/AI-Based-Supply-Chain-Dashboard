@@ -1,6 +1,9 @@
 def detect_intent(question: str) -> str:
     q = question.lower()
 
+    if "seasonal" in q or "pattern" in q or "month" in q:
+        return "SEASONAL"
+
     if "profit" in q or "margin" in q:
         return "PROFIT_ANALYSIS"
 

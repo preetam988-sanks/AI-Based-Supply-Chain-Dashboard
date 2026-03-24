@@ -148,8 +148,8 @@ def analyze_profitability(df: pd.DataFrame):
         df['profit'] = df['revenue'] - (df['cost_price'] * df['quantity'])
         profit_by_product = df.groupby("product")["profit"].sum().reset_index()
 
-        # Get top 5 profitable items for the table
-        top_profitable = profit_by_product.nlargest(5, 'profit').to_dict('records')
+        # Returns top 10 profitable items
+        top_profitable = profit_by_product.nlargest(10, 'profit').to_dict('records')
         best_p = profit_by_product.loc[profit_by_product['profit'].idxmax()]
 
         return {
@@ -203,6 +203,9 @@ def get_seasonal_trends(df: pd.DataFrame):
         return {"error": str(e)}
 
 def next_month_prediction(df: pd.DataFrame):
+    """
+    Generates a 30-day forecast and identifies the top 10 best and 10 lowest performing products.
+    """
     try:
         df['date'] = pd.to_datetime(df['date'])
         daily_sales = df.groupby('date')['revenue'].sum().reset_index()
@@ -228,6 +231,8 @@ def next_month_prediction(df: pd.DataFrame):
             prod_df = df[df['product'] == prod]
             revenue_share = prod_df['revenue'].sum() / total_hist_revenue if total_hist_revenue > 0 else 0
             expected_prod_rev = total_predicted * revenue_share
+
+            # Use unit price to estimate quantity
             avg_price = (prod_df['revenue'] / prod_df['quantity']).mean()
             predicted_qty = expected_prod_rev / avg_price if avg_price > 0 else 0
 
@@ -237,11 +242,12 @@ def next_month_prediction(df: pd.DataFrame):
                 "expected_revenue": round(float(expected_prod_rev), 2)
             })
 
+        # Return TOP 10 and LEAST 10
         return {
             "forecast_30d_total": f"₹{max(0, total_predicted):,.2f}",
             "methodology": method,
-            "top_buy_list": sorted(product_results, key=lambda x: x['predicted_qty'], reverse=True)[:5],
-            "least_priority_list": sorted(product_results, key=lambda x: x['predicted_qty'])[:5],
+            "top_buy_list": sorted(product_results, key=lambda x: x['predicted_qty'], reverse=True)[:10],
+            "least_priority_list": sorted(product_results, key=lambda x: x['predicted_qty'])[:10],
             "message": f"Forecast generated using {method}. High demand expected for {product_results[0]['product']}."
         }
     except Exception as e:

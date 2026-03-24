@@ -214,4 +214,14 @@ export const resetPassword = (data: any) =>
 export const loginUser = (credentials: any) =>
     publicClient.post("/users/login", credentials);
 
+export const getMonthlyRevenueReport = async () => {
+  const response = await fetch(`users/analytics/monthly-revenue`);
+  if (!response.ok) throw new Error("Failed to fetch monthly report");
+  return response.json();
+};
 
+export const getYearlyRevenueReport = async () => {
+  const response = await fetch(`users/analytics/yearly-revenue`);
+  if (!response.ok) throw new Error("Failed to fetch yearly report");
+  return response.json();
+};

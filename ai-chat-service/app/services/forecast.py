@@ -162,7 +162,7 @@ def analyze_profitability(df: pd.DataFrame):
 
 def get_seasonal_trends(df: pd.DataFrame):
     """
-    Groups data by month and identifies the top 3 products for every month.
+    Groups data by month and identifies the top 3 products based on QUANTITY.
     """
     try:
         df['date'] = pd.to_datetime(df['date'])
@@ -171,20 +171,24 @@ def get_seasonal_trends(df: pd.DataFrame):
         month_order = ["January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December"]
 
-        # Calculate revenue per month/product
-        monthly_prod_sales = df.groupby(['month_name', 'product'])['revenue'].sum().reset_index()
+        # CHANGE: We now group by 'quantity' instead of 'revenue' to see what's popular
+        monthly_prod_sales = df.groupby(['month_name', 'product'])['quantity'].sum().reset_index()
         available_months = [m for m in month_order if m in monthly_prod_sales['month_name'].unique()]
 
         seasonal_report = []
         for month in available_months:
             month_data = monthly_prod_sales[monthly_prod_sales['month_name'] == month]
-            top_3 = month_data.nlargest(3, 'revenue')
+            # Identifying top 3 based on unit volume
+            top_3 = month_data.nlargest(3, 'quantity')
 
             products_list = []
             for _, row in top_3.iterrows():
+                # We still keep revenue in the display for the UI
+                rev = df[(df['month_name'] == month) & (df['product'] == row['product'])]['revenue'].sum()
                 products_list.append({
                     "name": row['product'],
-                    "revenue": float(row['revenue'])
+                    "revenue": float(rev),
+                    "quantity": int(row['quantity']) # Adding quantity back to the data
                 })
 
             seasonal_report.append({
@@ -192,6 +196,7 @@ def get_seasonal_trends(df: pd.DataFrame):
                 "top_products": products_list
             })
 
+        # Best month is still usually determined by total revenue
         best_month_name = df.groupby('month_name')['revenue'].sum().idxmax()
 
         return {

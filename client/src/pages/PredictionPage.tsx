@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
     BrainCircuit, Upload, MessageSquare, AlertCircle, DollarSign,
-    History as HistoryIcon, Clock, Search, FileText, TrendingUp, Star, Calendar, Loader2, CheckCircle2
+    History as HistoryIcon, Clock, Search, TrendingUp, Star, Calendar, Loader2, CheckCircle2
 } from "lucide-react";
 
 // --- Sub-Component: Seasonal Performance Table ---
@@ -51,6 +51,7 @@ const SeasonalTable = ({ data }: { data: any[] }) => (
     </div>
 );
 
+// --- Main Prediction Page Component ---
 const PredictionPage: React.FC = () => {
     const [file, setFile] = useState<File | null>(null);
     const [question, setQuestion] = useState("");
@@ -89,10 +90,8 @@ const PredictionPage: React.FC = () => {
             setActiveId(record.id);
             setQuestion(record.questions);
 
-            // Comprehensive parsing for different backend response formats
             let parsedResult = typeof record.result === "string" ? JSON.parse(record.result) : record.result;
 
-            // If the result contains an 'answer' field that is also a stringified JSON
             if (parsedResult.answer && typeof parsedResult.answer === "string" && parsedResult.answer.startsWith("{")) {
                 parsedResult.answer = JSON.parse(parsedResult.answer);
             }
@@ -112,7 +111,6 @@ const PredictionPage: React.FC = () => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
             setError(null);
-            setResult(null); // Reset result when new file is added
         }
     };
 
@@ -140,13 +138,12 @@ const PredictionPage: React.FC = () => {
             const data = await response.json();
             setIntent(data.intent);
 
-            // Handle double stringified JSON if present
             const answer = typeof data.answer === "string" && data.answer.startsWith("{")
                 ? JSON.parse(data.answer)
                 : data.answer;
 
             setResult(answer);
-            fetchHistory(); // Refresh sidebar
+            fetchHistory();
         } catch (err) {
             setError("AI Engine unreachable. Please check your backend connection.");
         } finally {
@@ -174,10 +171,10 @@ const PredictionPage: React.FC = () => {
                         <tr key={i} className="hover:bg-zinc-800/50 transition-colors">
                             <td className="px-4 py-3 text-white font-medium">{item.product || item.name}</td>
                             <td className="px-4 py-3 text-right text-zinc-400">
-                                {item.predicted_qty !== undefined ? "Forecasted Qty" : "Profit Contribution"}
+                                {item.predicted_qty !== undefined ? "Recommended Qty" : "Revenue Contribution"}
                             </td>
                             <td className="px-4 py-3 text-right font-mono text-white">
-                                {item.predicted_qty ?? `₹${(item.profit || 0).toLocaleString()}`}
+                                {item.predicted_qty ?? `₹${(item.profit || item.revenue || 0).toLocaleString()}`}
                             </td>
                         </tr>
                     ))}
@@ -188,26 +185,24 @@ const PredictionPage: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col lg:grid lg:grid-cols-[1fr_350px] min-h-screen bg-zinc-950 text-zinc-200 selection:bg-cyan-500/30">
+        <div className="flex flex-col lg:grid lg:grid-cols-[1fr_350px] min-h-screen bg-zinc-950 text-zinc-200">
             {/* Main Content Area */}
             <div className="p-6 lg:p-10 space-y-8 border-r border-zinc-800">
-                {/* Header */}
                 <div className="flex flex-col gap-2 border-b border-zinc-800 pb-6">
                     <h1 className="text-4xl font-black text-white flex items-center gap-3 tracking-tighter">
                         <BrainCircuit className="text-cyan-500 h-10 w-10" />
                         SUPPLY CHAIN <span className="text-cyan-500">AI</span>
                     </h1>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">System State:</span>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Intent Detected:</span>
                         <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full border ${intent ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/20' : 'text-zinc-600 bg-zinc-900 border-zinc-800'}`}>
                             {intent || 'Awaiting Input'}
                         </span>
                     </div>
                 </div>
 
-                {/* Input Controls */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div className="xl:col-span-1 bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl shadow-inner">
+                    <div className="xl:col-span-1 bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl">
                         <label className="block text-[10px] font-bold text-zinc-500 mb-4 uppercase tracking-widest">01. Data Source</label>
                         <label className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-2xl cursor-pointer transition-all ${file ? 'border-cyan-500/50 bg-cyan-500/5' : 'border-zinc-800 hover:bg-zinc-800/50 hover:border-zinc-700'}`}>
                             {file ? <CheckCircle2 className="text-cyan-400 mb-3 h-10 w-10" /> : <Upload className="text-zinc-600 mb-3 h-10 w-10" />}
@@ -218,101 +213,110 @@ const PredictionPage: React.FC = () => {
                         </label>
                     </div>
 
-                    <form onSubmit={handleAskAI} className="xl:col-span-2 bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl flex flex-col gap-4 shadow-xl">
+                    <form onSubmit={handleAskAI} className="xl:col-span-2 bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl flex flex-col gap-4">
                         <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">02. Intelligence Prompt</label>
                         <textarea
                             value={question}
                             onChange={(e) => setQuestion(e.target.value)}
-                            placeholder="Ask about seasonal peaks, sales forecasts, or stock optimization..."
-                            className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder:text-zinc-700 focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/50 outline-none resize-none transition-all font-medium"
+                            placeholder="Ask about seasonal peaks, ABC analysis, or reorder optimization..."
+                            className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-white placeholder:text-zinc-700 outline-none resize-none"
                         />
                         <button
                             type="submit"
                             disabled={loading || !file}
-                            className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-20 disabled:cursor-not-allowed text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg shadow-cyan-900/20"
+                            className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-20 text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl flex items-center justify-center gap-3 transition-all"
                         >
                             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <TrendingUp className="h-4 w-4" />}
-                            Execute Analysis
+                            Execute Engine
                         </button>
                     </form>
                 </div>
 
-                {/* Error State */}
                 {error && (
-                    <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-400 text-sm font-bold animate-in zoom-in-95">
-                        <AlertCircle className="w-4 h-4" />
-                        {error}
+                    <div className="bg-red-500/5 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-400 text-sm font-bold">
+                        <AlertCircle className="w-4 h-4" /> {error}
                     </div>
                 )}
 
-                {/* Results View */}
+                {/* Results Mapping Section */}
                 {result && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {(intent === "SEASONAL") && result.most_promising_month && (
-                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl flex items-center gap-5 border-l-4 border-l-cyan-500 relative overflow-hidden group">
+                            {(intent === "SEASONAL" || result.most_promising_month) && (
+                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex items-center gap-5 border-l-4 border-l-cyan-500">
                                     <div className="p-4 bg-cyan-500/10 rounded-xl"><TrendingUp className="text-cyan-400 w-6 h-6" /></div>
-                                    <div className="z-10">
-                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Peak Performance Month</span>
-                                        <p className="text-3xl font-black text-white uppercase tracking-tighter">{result.most_promising_month}</p>
+                                    <div>
+                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Peak Month</span>
+                                        <p className="text-3xl font-black text-white uppercase">{result.most_promising_month || "N/A"}</p>
                                     </div>
-                                    <Star className="absolute -right-6 -bottom-6 w-32 h-32 text-cyan-500/5 group-hover:text-cyan-500/10 transition-all duration-700 rotate-12" />
                                 </div>
                             )}
 
-                            {(intent === "FORECAST" || intent === "PAST_RECORD") && result.forecast_30d_total && (
-                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl shadow-xl flex items-center gap-5 border-l-4 border-l-cyan-500">
+                            {(intent === "FORECAST" || result.forecast_30d_total) && (
+                                <div className="bg-zinc-900 border border-zinc-800 p-6 rounded-2xl flex items-center gap-5 border-l-4 border-l-cyan-500">
                                     <div className="p-4 bg-cyan-500/10 rounded-xl"><DollarSign className="text-cyan-400 w-6 h-6" /></div>
                                     <div>
-                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">30D Projected Forecast</span>
-                                        <p className="text-3xl font-black text-white tracking-tighter">
-                                            {typeof result.forecast_30d_total === 'number' ? `₹${result.forecast_30d_total.toLocaleString()}` : result.forecast_30d_total}
-                                        </p>
+                                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">30D Forecast</span>
+                                        <p className="text-3xl font-black text-white">{result.forecast_30d_total || "Calculated"}</p>
                                     </div>
                                 </div>
                             )}
                         </div>
 
-                        {/* Summary Message */}
-                        <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl flex gap-6 items-start border-l-4 border-l-cyan-500 shadow-2xl backdrop-blur-sm">
-                            <div className="shrink-0 p-3 bg-cyan-500/10 rounded-2xl shadow-lg">
-                                <MessageSquare className="text-cyan-400 h-6 w-6" />
-                            </div>
+                        <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-2xl flex gap-6 items-start border-l-4 border-l-cyan-500 shadow-2xl">
+                            <div className="shrink-0 p-3 bg-cyan-500/10 rounded-2xl"><MessageSquare className="text-cyan-400 h-6 w-6" /></div>
                             <div className="space-y-2">
                                 <span className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.3em]">AI Executive Summary</span>
-                                <div className="text-zinc-100 text-xl font-bold leading-snug tracking-tight">
-                                    {result.message || "Analysis report generated successfully."}
+                                <div className="text-zinc-100 text-xl font-bold leading-snug">
+                                    {result.message || "Data analysis complete. Categorized according to request intent."}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Data Tables */}
+                        {/* Intent-Based Logic for Tables */}
+                        {intent === "ABC_ANALYSIS" && result.abc_data && (
+                            <DataTable
+                                title="Inventory Classification (ABC)"
+                                type="buy"
+                                data={result.abc_data.map((item: any) => ({
+                                    product: `${item.product} [Class ${item.category}]`,
+                                    revenue: item.revenue
+                                }))}
+                            />
+                        )}
+
+                        {intent === "INVENTORY_OPTIMIZATION" && result.inventory_optimization && (
+                            <DataTable
+                                title="EOQ & Reorder Strategy"
+                                type="buy"
+                                data={result.inventory_optimization.map((item: any) => ({
+                                    product: item.product,
+                                    predicted_qty: item.recommended_order_size
+                                }))}
+                            />
+                        )}
+
                         {intent === "SEASONAL" && result.monthly_breakdown && (
                             <SeasonalTable data={result.monthly_breakdown} />
                         )}
 
                         {(result.top_buy_list || result.least_priority_list) && (
                             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                                {result.top_buy_list && (
-                                    <DataTable title="Optimized Inventory (Top Picks)" type="buy" data={result.top_buy_list} />
-                                )}
-                                {result.least_priority_list && (
-                                    <DataTable title="High Risk / Low Velocity" type="dead" data={result.least_priority_list} />
-                                )}
+                                {result.top_buy_list && <DataTable title="Optimized Inventory (Top Picks)" type="buy" data={result.top_buy_list} />}
+                                {result.least_priority_list && <DataTable title="High Risk / Low Velocity" type="dead" data={result.least_priority_list} />}
                             </div>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Sidebar: Activity History */}
+            {/* Sidebar */}
             <div className="bg-zinc-950 flex flex-col h-screen lg:sticky lg:top-0 border-l border-zinc-900 shadow-2xl">
-                <div className="p-8 border-b border-zinc-900 flex items-center gap-3 bg-zinc-950/50 backdrop-blur-md">
+                <div className="p-8 border-b border-zinc-900 flex items-center gap-3">
                     <Clock className="text-zinc-600 w-5 h-5" />
                     <h2 className="text-sm font-black text-zinc-400 uppercase tracking-[0.2em]">Activity Log</h2>
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {historyLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 gap-4 opacity-50">
                             <Loader2 className="h-6 w-6 text-cyan-500 animate-spin" />
@@ -328,13 +332,13 @@ const PredictionPage: React.FC = () => {
                             <button
                                 key={record.id}
                                 onClick={() => handleHistoryClick(record)}
-                                className={`w-full text-left p-5 border rounded-2xl transition-all relative overflow-hidden group ${activeId === record.id ? 'bg-cyan-500/5 border-cyan-500/40 shadow-lg shadow-cyan-900/10' : 'bg-zinc-900/30 border-zinc-900 hover:border-zinc-800 hover:bg-zinc-900/50'}`}
+                                className={`w-full text-left p-5 border rounded-2xl transition-all relative overflow-hidden group ${activeId === record.id ? 'bg-cyan-500/5 border-cyan-500/40 shadow-lg shadow-cyan-900/10' : 'bg-zinc-900/30 border-zinc-900 hover:border-zinc-800'}`}
                             >
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="text-[9px] font-black uppercase tracking-widest text-zinc-600">
                                         {new Date(record.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                     </span>
-                                    <Search className={`w-3 h-3 transition-colors ${activeId === record.id ? 'text-cyan-500' : 'text-zinc-800 group-hover:text-zinc-600'}`} />
+                                    <Search className={`w-3 h-3 ${activeId === record.id ? 'text-cyan-500' : 'text-zinc-800'}`} />
                                 </div>
                                 <p className={`text-xs font-bold leading-relaxed line-clamp-2 ${activeId === record.id ? 'text-white' : 'text-zinc-500'}`}>
                                     {record.questions}

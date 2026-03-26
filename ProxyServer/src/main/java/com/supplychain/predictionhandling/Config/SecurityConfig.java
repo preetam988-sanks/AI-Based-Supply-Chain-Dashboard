@@ -34,7 +34,8 @@ public class SecurityConfig {
                     config.setAllowedOrigins(List.of("http://localhost:5173",
                                     "https://supply-chain-main-chat.onrender.com",
                                     "https://ai-based-supply-chain-dashboard-ui.onrender.com",
-                            " https://supply-chain-ai-dashboard-admin.vercel.app"
+                            "https://supply-chain-ai-dashboard-admin.vercel.app"
+
                             ));
                     config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     config.setAllowedHeaders(Arrays.asList("*"));

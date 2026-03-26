@@ -6,7 +6,8 @@ from app.services.forecast import (
     best_selling_product,
     next_month_prediction,
     get_seasonal_trends,
-    get_abc_analysis
+    get_abc_analysis,
+    get_eoq_data
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -15,6 +16,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 async def chat(questions: str = Form(...), file: UploadFile = File(...)):
     df = load_csv(file)
     intent = detect_intent(questions)
+
     if intent == "HISTORICAL":
         answer = historical_summary(df)
     elif intent == "BEST_PRODUCT":
@@ -24,7 +26,10 @@ async def chat(questions: str = Form(...), file: UploadFile = File(...)):
     elif intent == "SEASONAL":
         answer = get_seasonal_trends(df)
     elif intent == "ABC_ANALYSIS":
-        answer = get_abc_analysis(df)
+        answer = {"abc_data": get_abc_analysis(df)}
+    elif intent == "INVENTORY_OPTIMIZATION":
+        answer = {"inventory_optimization": get_eoq_data(df)}
     else:
-        answer = {"message": "Intent not recognized"}
+        answer = {"message": "Intent not recognized. Try asking about forecasts, trends, or ABC analysis."}
+
     return {"question": questions, "intent": intent, "answer": answer}

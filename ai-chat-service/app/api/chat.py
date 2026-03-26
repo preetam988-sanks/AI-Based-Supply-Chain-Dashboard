@@ -5,36 +5,26 @@ from app.services.forecast import (
     historical_summary,
     best_selling_product,
     next_month_prediction,
-    analyze_profitability,
-    get_seasonal_trends # Add this
+    get_seasonal_trends,
+    get_abc_analysis
 )
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
 @router.post("")
-async def chat(
-        questions: str = Form(...),
-        file: UploadFile = File(...)
-):
+async def chat(questions: str = Form(...), file: UploadFile = File(...)):
     df = load_csv(file)
     intent = detect_intent(questions)
-
     if intent == "HISTORICAL":
         answer = historical_summary(df)
     elif intent == "BEST_PRODUCT":
         answer = best_selling_product(df)
     elif intent == "FORECAST":
         answer = next_month_prediction(df)
-    elif intent == "PROFIT_ANALYSIS":
-        answer = analyze_profitability(df)
     elif intent == "SEASONAL":
         answer = get_seasonal_trends(df)
+    elif intent == "ABC_ANALYSIS":
+        answer = get_abc_analysis(df)
     else:
-        answer = "Sorry, I couldn't understand the question."
-
-    # We return intent here so Java saves it inside the 'result' JSON string
-    return {
-        "question": questions,
-        "intent": intent,
-        "answer": answer
-    }
+        answer = {"message": "Intent not recognized"}
+    return {"question": questions, "intent": intent, "answer": answer}

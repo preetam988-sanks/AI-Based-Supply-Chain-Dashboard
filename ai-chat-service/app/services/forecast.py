@@ -130,91 +130,180 @@ import numpy as np
 from prophet import Prophet
 from sklearn.linear_model import LinearRegression
 
-def historical_summary(df: pd.DataFrame):
-    if "revenue" in df.columns:
-        total_revenue = df["revenue"].sum()
-        total_orders = len(df)
-        return {"total_revenue": float(total_revenue), "total_orders": total_orders}
-    return {"message": "Could not calculate totals from this file format."}
+# def historical_summary(df: pd.DataFrame):
+#     if "revenue" in df.columns:
+#         total_revenue = df["revenue"].sum()
+#         total_orders = len(df)
+#         return {"total_revenue": float(total_revenue), "total_orders": total_orders}
+#     return {"message": "Could not calculate totals from this file format."}
+#
+# def best_selling_product(df: pd.DataFrame):
+#     if "product" in df.columns and "quantity" in df.columns:
+#         product = df.groupby("product")["quantity"].sum().idxmax()
+#         return f"Your top product is {product}"
+#     return "Could not find product data."
+#
+# def analyze_profitability(df: pd.DataFrame):
+#     if "cost_price" in df.columns and "revenue" in df.columns and "quantity" in df.columns:
+#         df['profit'] = df['revenue'] - (df['cost_price'] * df['quantity'])
+#         profit_by_product = df.groupby("product")["profit"].sum().reset_index()
+#
+#         # Returns top 10 profitable items
+#         top_profitable = profit_by_product.nlargest(10, 'profit').to_dict('records')
+#         best_p = profit_by_product.loc[profit_by_product['profit'].idxmax()]
+#
+#         return {
+#             "best_profitable_product": best_p['product'],
+#             "total_profit_earned": f"₹{best_p['profit']:,.2f}",
+#             "top_buy_list": [{"product": r['product'], "profit": r['profit']} for r in top_profitable],
+#             "message": f"The {best_p['product']} is your most profitable item."
+#         }
+#     return "I need 'cost_price', 'revenue', and 'quantity' columns to calculate profit."
+#
+# def get_seasonal_trends(df: pd.DataFrame):
+#     """
+#     Groups data by month and identifies the top 3 products based on QUANTITY.
+#     """
+#     try:
+#         df['date'] = pd.to_datetime(df['date'])
+#         df['month_name'] = df['date'].dt.strftime('%B')
+#
+#         month_order = ["January", "February", "March", "April", "May", "June",
+#                        "July", "August", "September", "October", "November", "December"]
+#
+#         # CHANGE: We now group by 'quantity' instead of 'revenue' to see what's popular
+#         monthly_prod_sales = df.groupby(['month_name', 'product'])['quantity'].sum().reset_index()
+#         available_months = [m for m in month_order if m in monthly_prod_sales['month_name'].unique()]
+#
+#         seasonal_report = []
+#         for month in available_months:
+#             month_data = monthly_prod_sales[monthly_prod_sales['month_name'] == month]
+#             # Identifying top 3 based on unit volume
+#             top_3 = month_data.nlargest(3, 'quantity')
+#
+#             products_list = []
+#             for _, row in top_3.iterrows():
+#                 # We still keep revenue in the display for the UI
+#                 rev = df[(df['month_name'] == month) & (df['product'] == row['product'])]['revenue'].sum()
+#                 products_list.append({
+#                     "name": row['product'],
+#                     "revenue": float(rev),
+#                     "quantity": int(row['quantity']) # Adding quantity back to the data
+#                 })
+#
+#             seasonal_report.append({
+#                 "month": month,
+#                 "top_products": products_list
+#             })
+#
+#         # Best month is still usually determined by total revenue
+#         best_month_name = df.groupby('month_name')['revenue'].sum().idxmax()
+#
+#         return {
+#             "most_promising_month": best_month_name,
+#             "monthly_breakdown": seasonal_report,
+#             "message": f"Market analysis identifies {best_month_name} as your peak demand period."
+#         }
+#     except Exception as e:
+#         return {"error": str(e)}
+#
+# def next_month_prediction(df: pd.DataFrame):
+#     """
+#     Generates a 30-day forecast and identifies the top 10 best and 10 lowest performing products.
+#     """
+#     try:
+#         df['date'] = pd.to_datetime(df['date'])
+#         daily_sales = df.groupby('date')['revenue'].sum().reset_index()
+#
+#         if len(daily_sales) < 10:
+#             X = np.array(range(len(daily_sales))).reshape(-1, 1)
+#             y = daily_sales['revenue'].values
+#             model = LinearRegression().fit(X, y)
+#             total_predicted = np.sum(model.predict(np.array(range(len(daily_sales), len(daily_sales) + 30)).reshape(-1, 1)))
+#             method = "Linear Trend"
+#         else:
+#             m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+#             m.fit(daily_sales.rename(columns={'date': 'ds', 'revenue': 'y'}))
+#             forecast = m.predict(m.make_future_dataframe(periods=30))
+#             total_predicted = forecast.iloc[-30:]['yhat'].sum()
+#             method = "Prophet Seasonal Model"
+#
+#         unique_products = df['product'].unique()
+#         product_results = []
+#         total_hist_revenue = df['revenue'].sum()
+#
+#         for prod in unique_products:
+#             prod_df = df[df['product'] == prod]
+#             revenue_share = prod_df['revenue'].sum() / total_hist_revenue if total_hist_revenue > 0 else 0
+#             expected_prod_rev = total_predicted * revenue_share
+#
+#             # Use unit price to estimate quantity
+#             avg_price = (prod_df['revenue'] / prod_df['quantity']).mean()
+#             predicted_qty = expected_prod_rev / avg_price if avg_price > 0 else 0
+#
+#             product_results.append({
+#                 "product": prod,
+#                 "predicted_qty": round(float(predicted_qty), 0),
+#                 "expected_revenue": round(float(expected_prod_rev), 2)
+#             })
+#
+#         # Return TOP 10 and LEAST 10
+#         return {
+#             "forecast_30d_total": f"₹{max(0, total_predicted):,.2f}",
+#             "methodology": method,
+#             "top_buy_list": sorted(product_results, key=lambda x: x['predicted_qty'], reverse=True)[:10],
+#             "least_priority_list": sorted(product_results, key=lambda x: x['predicted_qty'])[:10],
+#             "message": f"Forecast generated using {method}. High demand expected for {product_results[0]['product']}."
+#         }
+#     except Exception as e:
+#         return {"error": str(e)}
 
-def best_selling_product(df: pd.DataFrame):
-    if "product" in df.columns and "quantity" in df.columns:
-        product = df.groupby("product")["quantity"].sum().idxmax()
-        return f"Your top product is {product}"
-    return "Could not find product data."
+import pandas as pd
+import numpy as np
+from prophet import Prophet
+from sklearn.linear_model import LinearRegression
 
-def analyze_profitability(df: pd.DataFrame):
-    if "cost_price" in df.columns and "revenue" in df.columns and "quantity" in df.columns:
-        df['profit'] = df['revenue'] - (df['cost_price'] * df['quantity'])
-        profit_by_product = df.groupby("product")["profit"].sum().reset_index()
-
-        # Returns top 10 profitable items
-        top_profitable = profit_by_product.nlargest(10, 'profit').to_dict('records')
-        best_p = profit_by_product.loc[profit_by_product['profit'].idxmax()]
-
-        return {
-            "best_profitable_product": best_p['product'],
-            "total_profit_earned": f"₹{best_p['profit']:,.2f}",
-            "top_buy_list": [{"product": r['product'], "profit": r['profit']} for r in top_profitable],
-            "message": f"The {best_p['product']} is your most profitable item."
-        }
-    return "I need 'cost_price', 'revenue', and 'quantity' columns to calculate profit."
+def get_abc_analysis(df: pd.DataFrame):
+    items = df.groupby('product')['revenue'].sum().sort_values(ascending=False).reset_index()
+    total_rev = items['revenue'].sum()
+    items['running_sum'] = items['revenue'].cumsum()
+    abc_results = []
+    for _, row in items.iterrows():
+        share = (row['running_sum'] / total_rev) * 100
+        category = "A" if share <= 70 else "B" if share <= 90 else "C"
+        abc_results.append({
+            "product": row['product'],
+            "category": category,
+            "revenue": float(row['revenue'])
+        })
+    return abc_results
 
 def get_seasonal_trends(df: pd.DataFrame):
-    """
-    Groups data by month and identifies the top 3 products based on QUANTITY.
-    """
     try:
         df['date'] = pd.to_datetime(df['date'])
         df['month_name'] = df['date'].dt.strftime('%B')
-
         month_order = ["January", "February", "March", "April", "May", "June",
                        "July", "August", "September", "October", "November", "December"]
-
-        # CHANGE: We now group by 'quantity' instead of 'revenue' to see what's popular
         monthly_prod_sales = df.groupby(['month_name', 'product'])['quantity'].sum().reset_index()
         available_months = [m for m in month_order if m in monthly_prod_sales['month_name'].unique()]
-
         seasonal_report = []
         for month in available_months:
             month_data = monthly_prod_sales[monthly_prod_sales['month_name'] == month]
-            # Identifying top 3 based on unit volume
             top_3 = month_data.nlargest(3, 'quantity')
-
             products_list = []
             for _, row in top_3.iterrows():
-                # We still keep revenue in the display for the UI
                 rev = df[(df['month_name'] == month) & (df['product'] == row['product'])]['revenue'].sum()
-                products_list.append({
-                    "name": row['product'],
-                    "revenue": float(rev),
-                    "quantity": int(row['quantity']) # Adding quantity back to the data
-                })
-
-            seasonal_report.append({
-                "month": month,
-                "top_products": products_list
-            })
-
-        # Best month is still usually determined by total revenue
+                products_list.append({"name": row['product'], "revenue": float(rev), "quantity": int(row['quantity'])})
+            seasonal_report.append({"month": month, "top_products": products_list})
         best_month_name = df.groupby('month_name')['revenue'].sum().idxmax()
-
-        return {
-            "most_promising_month": best_month_name,
-            "monthly_breakdown": seasonal_report,
-            "message": f"Market analysis identifies {best_month_name} as your peak demand period."
-        }
+        return {"most_promising_month": best_month_name, "monthly_breakdown": seasonal_report}
     except Exception as e:
         return {"error": str(e)}
 
 def next_month_prediction(df: pd.DataFrame):
-    """
-    Generates a 30-day forecast and identifies the top 10 best and 10 lowest performing products.
-    """
     try:
         df['date'] = pd.to_datetime(df['date'])
         daily_sales = df.groupby('date')['revenue'].sum().reset_index()
-
         if len(daily_sales) < 10:
             X = np.array(range(len(daily_sales))).reshape(-1, 1)
             y = daily_sales['revenue'].values
@@ -222,38 +311,42 @@ def next_month_prediction(df: pd.DataFrame):
             total_predicted = np.sum(model.predict(np.array(range(len(daily_sales), len(daily_sales) + 30)).reshape(-1, 1)))
             method = "Linear Trend"
         else:
-            m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
+            m = Prophet(yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False, uncertainty_samples=0)
             m.fit(daily_sales.rename(columns={'date': 'ds', 'revenue': 'y'}))
             forecast = m.predict(m.make_future_dataframe(periods=30))
             total_predicted = forecast.iloc[-30:]['yhat'].sum()
             method = "Prophet Seasonal Model"
-
         unique_products = df['product'].unique()
         product_results = []
         total_hist_revenue = df['revenue'].sum()
-
         for prod in unique_products:
             prod_df = df[df['product'] == prod]
             revenue_share = prod_df['revenue'].sum() / total_hist_revenue if total_hist_revenue > 0 else 0
             expected_prod_rev = total_predicted * revenue_share
-
-            # Use unit price to estimate quantity
             avg_price = (prod_df['revenue'] / prod_df['quantity']).mean()
             predicted_qty = expected_prod_rev / avg_price if avg_price > 0 else 0
-
+            status = "Healthy"
+            if predicted_qty > 100: status = "Stock Warning"
             product_results.append({
                 "product": prod,
                 "predicted_qty": round(float(predicted_qty), 0),
-                "expected_revenue": round(float(expected_prod_rev), 2)
+                "expected_revenue": round(float(expected_prod_rev), 2),
+                "status": status
             })
-
-        # Return TOP 10 and LEAST 10
         return {
             "forecast_30d_total": f"₹{max(0, total_predicted):,.2f}",
             "methodology": method,
             "top_buy_list": sorted(product_results, key=lambda x: x['predicted_qty'], reverse=True)[:10],
-            "least_priority_list": sorted(product_results, key=lambda x: x['predicted_qty'])[:10],
-            "message": f"Forecast generated using {method}. High demand expected for {product_results[0]['product']}."
+            "abc_analysis": get_abc_analysis(df)
         }
     except Exception as e:
         return {"error": str(e)}
+
+def historical_summary(df: pd.DataFrame):
+    total_revenue = df["revenue"].sum()
+    total_orders = len(df)
+    return {"total_revenue": float(total_revenue), "total_orders": total_orders}
+
+def best_selling_product(df: pd.DataFrame):
+    product = df.groupby("product")["quantity"].sum().idxmax()
+    return {"top_product": product}
